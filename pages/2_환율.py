@@ -1,14 +1,10 @@
 import streamlit as st
 import requests
 
-# 페이지 기본 설정 (반드시 다른 st 명령보다 먼저, 맨 위에)
 st.set_page_config(page_title="환율 계산", page_icon="💱", layout="centered")
-
 
 @st.cache_data
 def get_rate(base, target):
-    """기준 통화에서 대상 통화로의 환율 1개를 Frankfurter API에서 받아온다."""
-    # 같은 통화면 환율은 1
     if base == target:
         return 1.0
     try:
@@ -17,29 +13,31 @@ def get_rate(base, target):
         response = requests.get(url, params=params, timeout=5)
         response.raise_for_status()
         data = response.json()
-        # 응답의 rates 딕셔너리에서 대상 통화 값을 꺼낸다
         return data["rates"][target]
     except Exception:
-        # 네트워크 실패 등 문제가 생기면 None 반환
         return None
 
-
-# 화면 제목
 st.title("💱 환율 계산")
-st.write("금액과 통화를 선택하면 환산 결과를 보여줍니다.")
 
-# 사용할 통화 목록
+# [연동 로직] 메인에서 선택된 도시의 통화를 가져옴 (없으면 USD 기본)
+target_currency = st.session_state.get("currency", "USD")
+city = st.session_state.get("selected_city", "선택 안 됨")
+
+st.write(f"현재 선택된 도시 **{city}**의 통화인 **{target_currency}** 기준으로 자동 세팅되었습니다.")
+
 currencies = ["KRW", "USD", "JPY", "EUR", "GBP"]
 
-# 입력 영역
 amount = st.number_input("금액", min_value=0.0, value=1000.0, step=100.0)
 col1, col2 = st.columns(2)
+
 with col1:
+    # 한국에서 여행 가는 기준이 많으므로 기본 기준 통화는 KRW(index=0)
     base = st.selectbox("기준 통화", currencies, index=0)
 with col2:
-    target = st.selectbox("대상 통화", currencies, index=1)
+    # 메인에서 넘어온 통화가 목록에 있으면 그걸 자동으로 선택하도록 index 설정
+    default_index = currencies.index(target_currency) if target_currency in currencies else 1
+    target = st.selectbox("대상 통화", currencies, index=default_index)
 
-# 버튼을 누르면 환산
 if st.button("환산하기"):
     rate = get_rate(base, target)
     if rate is None:
