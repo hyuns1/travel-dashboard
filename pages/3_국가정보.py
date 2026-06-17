@@ -4,7 +4,7 @@ import requests
 st.set_page_config(page_title="국가 정보", page_icon="🏳️", layout="centered")
 
 API_BASE = "https://api.restcountries.com/countries/v5"
-API_KEY = "여기에_본인_키"  # 발급받은 본인 키
+API_KEY = "rc_live_9607ffca4e274b0e9a61970e78032b77"  # 발급받은 본인 키
 
 # 도시 -> ISO alpha-2 국가 코드
 CITY_TO_CODE = {
