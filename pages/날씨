@@ -1,0 +1,135 @@
+import streamlit as st
+import requests
+import plotly.graph_objects as go
+
+from utils.geocode import geocode
+
+st.set_page_config(page_title="날씨", page_icon="🌤️", layout="centered")
+
+# ---------------------------------------------------------------------------
+# 날씨 코드(WMO) -> 이모지/설명 매핑
+# ---------------------------------------------------------------------------
+WEATHER_EMOJI = {
+    0: "☀️ 맑음", 1: "🌤️ 대체로 맑음", 2: "⛅ 부분 흐림", 3: "☁️ 흐림",
+    45: "🌫️ 안개", 48: "🌫️ 서리 안개",
+    51: "🌦️ 약한 이슬비", 53: "🌦️ 이슬비", 55: "🌦️ 강한 이슬비",
+    61: "🌧️ 약한 비", 63: "🌧️ 비", 65: "🌧️ 강한 비",
+    71: "🌨️ 약한 눈", 73: "🌨️ 눈", 75: "❄️ 강한 눈",
+    80: "🌦️ 약한 소나기", 81: "🌧️ 소나기", 82: "⛈️ 강한 소나기",
+    95: "⛈️ 뇌우", 96: "⛈️ 뇌우(약한 우박)", 99: "⛈️ 뇌우(강한 우박)",
+}
+
+
+def get_weather_emoji(code):
+    return WEATHER_EMOJI.get(code, "🌡️ 정보 없음")
+
+
+@st.cache_data(show_spinner=False)
+def get_city_coords(city_name: str):
+    """geocode 공용 유틸로 도시명 -> (lat, lon) 변환."""
+    return geocode(city_name)
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def get_weather(lat: float, lon: float):
+    """Open-Meteo에서 현재 날씨 + 7일 예보를 가져온다. 실패 시 None."""
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+        "timezone": "auto",
+        "forecast_days": 7,
+    }
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
+# ---------------------------------------------------------------------------
+# 화면 구성
+# ---------------------------------------------------------------------------
+
+st.title("🌤️ 날씨")
+
+city = st.session_state.get("selected_city")
+
+if not city:
+    st.warning("메인 화면에서 먼저 도시를 선택해 주세요.")
+    st.stop()
+
+st.write(f"선택한 도시: **{city}**")
+
+coords = get_city_coords(city)
+if coords is None:
+    st.error(f"'{city}'의 위치를 찾지 못했습니다. 도시명을 확인해 주세요.")
+    st.stop()
+
+lat, lon = coords
+
+data = get_weather(lat, lon)
+if data is None:
+    st.error("날씨 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    st.stop()
+
+st.markdown("---")
+
+# 1. 현재 날씨 카드 -----------------------------------------------------------
+current = data.get("current", {})
+current_code = current.get("weather_code")
+
+st.subheader("📍 현재 날씨")
+st.markdown(f"### {get_weather_emoji(current_code)}")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("현재 온도", f'{current.get("temperature_2m", "-")}°C')
+with col2:
+    st.metric("습도", f'{current.get("relative_humidity_2m", "-")}%')
+with col3:
+    st.metric("풍속", f'{current.get("wind_speed_10m", "-")} km/h')
+
+st.caption("출처: Open-Meteo (무료 날씨 API)")
+
+st.markdown("---")
+
+# 2. 7일 예보 차트 (Plotly) ---------------------------------------------------
+daily = data.get("daily", {})
+dates = daily.get("time", [])
+temp_max = daily.get("temperature_2m_max", [])
+temp_min = daily.get("temperature_2m_min", [])
+codes = daily.get("weather_code", [])
+
+st.subheader("📅 7일 기온 예보")
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=dates, y=temp_max,
+    name="최고기온(°C)", mode="lines+markers",
+    line=dict(color="#FF6B6B", width=3),
+))
+fig.add_trace(go.Scatter(
+    x=dates, y=temp_min,
+    name="최저기온(°C)", mode="lines+markers",
+    line=dict(color="#4D96FF", width=3),
+    fill="tonexty",
+))
+fig.update_layout(
+    xaxis_title="날짜",
+    yaxis_title="온도(°C)",
+    hovermode="x unified",
+    margin=dict(t=20, b=20),
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# 일별 날씨 이모지 카드 (차트 보조용)
+day_cols = st.columns(len(dates)) if dates else []
+for col, date, code, tmax, tmin in zip(day_cols, dates, codes, temp_max, temp_min):
+    with col:
+        st.markdown(f"**{date[5:]}**")  # MM-DD 만 표시
+        st.markdown(get_weather_emoji(code).split(" ")[0])  # 이모지만
+        st.caption(f"{tmax:.0f}° / {tmin:.0f}°")
