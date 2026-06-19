@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import plotly.graph_objects as go
 
-from utils.geocode import geocode
+from pages.utils.geocode import geocode
 
 st.set_page_config(page_title="날씨", page_icon="🌤️", layout="centered")
 

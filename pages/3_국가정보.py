@@ -6,31 +6,43 @@ st.set_page_config(page_title="국가 정보", page_icon="🏳️", layout="cent
 API_BASE = "https://api.restcountries.com/countries/v5"
 API_KEY = "rc_live_9607ffca4e274b0e9a61970e78032b77"  # 발급받은 본인 키
 
-# 도시 -> ISO alpha-2 국가 코드
+# 🔥 한국어 도시 이름과 영문 이름 모두 대응할 수 있도록 수정
 CITY_TO_CODE = {
-    "Seoul": "KR", "Paris": "FR", "Tokyo": "JP",
-    "New York": "US", "London": "GB",
+    "서울": "KR", "부산": "KR", "제주": "KR", "Seoul": "KR",
+    "Paris": "FR", "Lyon": "FR", "Nice": "FR",
+    "Tokyo": "JP", "Osaka": "JP", "Kyoto": "JP",
+    "New York": "US", "Los Angeles": "US", "San Francisco": "US",
+    "London": "GB", "Manchester": "GB", "Edinburgh": "GB"
 }
 
+# 🔥 app.py에 기재된 모든 도시를 완벽히 커버할 수 있도록 내장(FALLBACK) 데이터 확장
 FALLBACK = {
-    "Seoul": {"name": "대한민국", "flag": "https://flagcdn.com/w320/kr.png",
-              "capital": "서울", "population": 51780000, "currency": "KRW", "language": "한국어"},
-    "Paris": {"name": "France", "flag": "https://flagcdn.com/w320/fr.png",
-              "capital": "Paris", "population": 67390000, "currency": "EUR", "language": "French"},
-    "Tokyo": {"name": "Japan", "flag": "https://flagcdn.com/w320/jp.png",
-              "capital": "Tokyo", "population": 125800000, "currency": "JPY", "language": "Japanese"},
-    "New York": {"name": "United States", "flag": "https://flagcdn.com/w320/us.png",
-                 "capital": "Washington D.C.", "population": 331900000, "currency": "USD", "language": "English"},
-    "London": {"name": "United Kingdom", "flag": "https://flagcdn.com/w320/gb.png",
-               "capital": "London", "population": 67330000, "currency": "GBP", "language": "English"},
+    "서울": {"name": "대한민국", "flag": "https://flagcdn.com/w320/kr.png", "capital": "서울", "population": 51780000, "currency": "KRW", "language": "한국어"},
+    "부산": {"name": "대한민국", "flag": "https://flagcdn.com/w320/kr.png", "capital": "서울", "population": 51780000, "currency": "KRW", "language": "한국어"},
+    "제주": {"name": "대한민국", "flag": "https://flagcdn.com/w320/kr.png", "capital": "서울", "population": 51780000, "currency": "KRW", "language": "한국어"},
+    "Seoul": {"name": "대한민국", "flag": "https://flagcdn.com/w320/kr.png", "capital": "서울", "population": 51780000, "currency": "KRW", "language": "한국어"},
+    
+    "Paris": {"name": "France", "flag": "https://flagcdn.com/w320/fr.png", "capital": "Paris", "population": 67390000, "currency": "EUR", "language": "French"},
+    "Lyon": {"name": "France", "flag": "https://flagcdn.com/w320/fr.png", "capital": "Paris", "population": 67390000, "currency": "EUR", "language": "French"},
+    "Nice": {"name": "France", "flag": "https://flagcdn.com/w320/fr.png", "capital": "Paris", "population": 67390000, "currency": "EUR", "language": "French"},
+    
+    "Tokyo": {"name": "Japan", "flag": "https://flagcdn.com/w320/jp.png", "capital": "Tokyo", "population": 125800000, "currency": "JPY", "language": "Japanese"},
+    "Osaka": {"name": "Japan", "flag": "https://flagcdn.com/w320/jp.png", "capital": "Tokyo", "population": 125800000, "currency": "JPY", "language": "Japanese"},
+    "Kyoto": {"name": "Japan", "flag": "https://flagcdn.com/w320/jp.png", "capital": "Tokyo", "population": 125800000, "currency": "JPY", "language": "Japanese"},
+    
+    "New York": {"name": "United States", "flag": "https://flagcdn.com/w320/us.png", "capital": "Washington D.C.", "population": 331900000, "currency": "USD", "language": "English"},
+    "Los Angeles": {"name": "United States", "flag": "https://flagcdn.com/w320/us.png", "capital": "Washington D.C.", "population": 331900000, "currency": "USD", "language": "English"},
+    "San Francisco": {"name": "United States", "flag": "https://flagcdn.com/w320/us.png", "capital": "Washington D.C.", "population": 331900000, "currency": "USD", "language": "English"},
+    
+    "London": {"name": "United Kingdom", "flag": "https://flagcdn.com/w320/gb.png", "capital": "London", "population": 67330000, "currency": "GBP", "language": "English"},
+    "Manchester": {"name": "United Kingdom", "flag": "https://flagcdn.com/w320/gb.png", "capital": "London", "population": 67330000, "currency": "GBP", "language": "English"},
+    "Edinburgh": {"name": "United Kingdom", "flag": "https://flagcdn.com/w320/gb.png", "capital": "London", "population": 67330000, "currency": "GBP", "language": "English"},
 }
-
 
 @st.cache_data
 def get_country_info(code):
     """ISO alpha-2 코드로 REST Countries v5에서 국가 정보를 받아온다. 실패 시 None."""
     try:
-        # 경로로 정확히 조회: /codes.alpha_2/KR
         url = f"{API_BASE}/codes.alpha_2/{code}"
         headers = {"Authorization": f"Bearer {API_KEY}"}
         r = requests.get(url, headers=headers, timeout=10)
@@ -54,7 +66,6 @@ def get_country_info(code):
         }
     except Exception:
         return None
-
 
 st.title("🏳️ 국가 정보")
 city = st.session_state.get("selected_city")
@@ -84,4 +95,5 @@ else:
         with col2:
             st.metric("인구", f'{info["population"]:,}')
             st.metric("언어", info["language"])
+        st.markdown("---")
         st.caption(f"출처: {source}")
